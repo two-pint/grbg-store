@@ -1,0 +1,164 @@
+Ticket,Title,Phase,Tasks,Acceptance Criteria
+TICKET-01,Create Shopify store and generate Storefront API credentials,Phase 0: Accounts and Setup,"1. Sign up at shopify.com and create a store (e.g. grbg.myshopify.com)
+2. In Shopify Admin go to Settings > Apps and sales channels > Develop apps
+3. Create a custom app named ""GRBG Storefront""
+4. Under Storefront API scopes enable: unauthenticated_read_product_listings, unauthenticated_read_product_tags, unauthenticated_read_checkouts, unauthenticated_write_checkouts
+5. Install the app and copy the Storefront API access token
+6. Record the store domain and access token securely for TICKET-04","- Shopify store exists and is accessible at its .myshopify.com URL
+- A custom app is installed with Storefront API scopes granted
+- You have a valid Storefront API access token
+- A test GraphQL query (e.g. { shop { name } }) returns successfully against the Storefront API endpoint"
+TICKET-02,Create Printful account and install Printful app in Shopify,Phase 0: Accounts and Setup,"1. Create a Printful account at printful.com
+2. In Shopify Admin search the App Store for the ""Printful"" app and install it
+3. In Printful connect your Shopify store when prompted
+4. Confirm the connection status shows ""Connected"" in both Printful and Shopify","- Printful account exists and is logged in
+- Printful app is installed in Shopify Admin
+- Printful dashboard shows the Shopify store as a connected store
+- Shopify Admin shows Printful under installed apps"
+TICKET-03,Design and sync initial products in Printful to Shopify,Phase 0: Accounts and Setup,"1. In Printful create at least 2-3 products (e.g. t-shirt, hoodie, poster) using the Design Maker or by uploading artwork
+2. Set product titles, descriptions, pricing, and mockup images
+3. Push/sync products to the connected Shopify store
+4. Verify products appear in Shopify Admin under Products","- At least 2 products exist in Printful with designs, pricing, and mockups
+- All Printful products are synced and visible in Shopify Admin > Products
+- Each product has at least one variant (size/color) with a price set
+- Product images from Printful mockups are present in Shopify"
+TICKET-04,Add .env.local and create lib/shopify/config.ts with typed env validation,Phase 1: Shopify Integration,"1. Create .env.local at the project root with SHOPIFY_STORE_DOMAIN and SHOPIFY_STOREFRONT_ACCESS_TOKEN
+2. Add .env.local to .gitignore (if not already present)
+3. Create lib/shopify/config.ts that reads both env vars, validates they are defined, and exports typed constants (storeDomain, storefrontAccessToken, storefrontApiUrl)
+4. Add .env.example with placeholder values for documentation","- .env.local exists with both variables populated
+- .env.local is in .gitignore
+- lib/shopify/config.ts throws a clear error at startup if either env var is missing
+- Exported storefrontApiUrl is a valid URL of the form https://<domain>/api/<version>/graphql.json
+- .env.example exists with placeholder keys"
+TICKET-05,Build server-side Storefront API GraphQL client,Phase 1: Shopify Integration,"1. Create lib/shopify/client.ts
+2. Implement a shopifyFetch<T>(query, variables?) function that POSTs to the Storefront API URL from config, sends the access token in the X-Shopify-Storefront-Access-Token header, sends Content-Type: application/json, parses the JSON response and returns data or throws on GraphQL errors
+3. Ensure this module is server-only (add import ""server-only"" or equivalent guard)","- shopifyFetch is exported and callable from any Server Component or server action
+- The access token is never exposed to client-side bundles
+- GraphQL errors are thrown with a descriptive message
+- A simple test query (e.g. { shop { name } }) returns the shop name when called from a Server Component"
+TICKET-06,Define Storefront API TypeScript types,Phase 1: Shopify Integration,"1. Create lib/shopify/types.ts
+2. Define types for at least: Money, Image, ProductVariant, Product, Collection, CartLine, Cart, and Connection<T> (for edges/nodes pagination)
+3. Keep types minimal -- only fields used in queries","- All types are exported from lib/shopify/types.ts
+- Types match the shape of Storefront API responses for the queries built in TICKET-07 and TICKET-08
+- No any types; all fields are explicitly typed
+- The file compiles with zero TypeScript errors"
+TICKET-07,Implement product queries,Phase 1: Shopify Integration,"1. Create lib/shopify/products.ts
+2. Implement getProducts(first?) -- fetches products with images, variants, price
+3. Implement getProductByHandle(handle) -- fetches a single product with full detail
+4. Implement getCollections() and getCollectionProducts(handle) -- fetches collections and products within a collection
+5. All functions call shopifyFetch and return typed results","- getProducts() returns an array of products matching Shopify data
+- getProductByHandle(""some-handle"") returns the correct product or null
+- getCollections() returns available collections
+- getCollectionProducts(""some-collection"") returns products within that collection
+- Returned data includes title, handle, description, images, variants with price
+- All functions are server-only"
+TICKET-08,Implement cart mutations,Phase 1: Shopify Integration,"1. Create lib/shopify/cart.ts
+2. Implement createCart() -- creates an empty cart via cartCreate mutation
+3. Implement addToCart(cartId, variantId, quantity) -- adds a line via cartLinesAdd
+4. Implement updateCartLine(cartId, lineId, quantity) -- updates quantity via cartLinesUpdate
+5. Implement removeFromCart(cartId, lineIds) -- removes lines via cartLinesRemove
+6. Implement getCart(cartId) -- fetches cart by ID
+7. All mutations return the updated Cart object including checkoutUrl, lines, and cost","- createCart() returns a cart with an id and checkoutUrl
+- addToCart() adds a line item; the returned cart reflects the new line
+- updateCartLine() changes a line's quantity
+- removeFromCart() removes the specified lines from the cart
+- getCart() returns a full cart or null if the ID is invalid/expired
+- All functions are server-only and return typed Cart objects"
+TICKET-09,Cart persistence -- store cart ID in cookie,Phase 1: Shopify Integration,"1. Create lib/shopify/cart-cookie.ts
+2. Implement getCartId() that reads a cartId cookie from the request using cookies() from next/headers
+3. Implement setCartId(cartId) that sets the cartId cookie (HttpOnly, SameSite=Lax, path=""/"", max-age ~30 days)
+4. Create server actions in lib/shopify/actions.ts that combine cookie logic with cart mutations: addToCartAction, updateCartLineAction, removeFromCartAction","- After addToCartAction a cartId cookie is set in the browser
+- Refreshing the page preserves the cart (cookie persists)
+- Calling getCartId() returns the stored cart ID across requests
+- If the cart expires or is invalid a new cart is created on the next add"
+TICKET-10,Global layout -- header and footer and metadata,Phase 2: Frontend Pages,"1. Update app/layout.tsx: set title to ""GRBG"", description to store tagline
+2. Create components/Header.tsx: logo/wordmark linking to /, nav links (Home, Products), cart icon with item count
+3. Cart icon count: read cart from cookie (server-side) and display line count
+4. Create components/Footer.tsx: simple footer with copyright and optional links
+5. Include Header and Footer in layout.tsx wrapping {children}","- Every page shows a consistent header with logo, nav, and cart icon
+- Cart icon displays the current number of items (updates after add/remove)
+- Footer is visible on every page
+- HTML title and meta description are set for SEO
+- Layout is responsive (mobile hamburger or simplified nav at small breakpoints)"
+TICKET-11,Homepage -- hero section and featured products,Phase 2: Frontend Pages,"1. Replace app/page.tsx boilerplate with the GRBG homepage
+2. Add a hero section: large banner/heading with tagline and a CTA button (""Shop Now"" linking to /products)
+3. Below the hero fetch and display a grid of featured products (e.g. first 4-6 products from getProducts())
+4. Each product card: image, title, price, link to /product/[handle]
+5. Style with Tailwind; ensure responsive grid (1 col mobile, 2 col tablet, 3-4 col desktop)","- Homepage loads with a hero section and at least one CTA
+- Featured products grid displays product image, title, and price
+- Clicking a product card navigates to /product/[handle]
+- Page is a Server Component; data is fetched server-side
+- Responsive layout works on mobile, tablet, and desktop"
+TICKET-12,Products listing page,Phase 2: Frontend Pages,"1. Create app/products/page.tsx
+2. Fetch all products using getProducts()
+3. Render a grid of product cards (reuse card component from TICKET-11 if extracted)
+4. Each card links to /product/[handle]
+5. Optionally add collection-based filtering or a separate app/collection/[handle]/page.tsx route","- /products renders a grid of all synced Shopify products
+- Each card shows image, title, and price
+- Clicking a card navigates to the product detail page
+- Page is a Server Component with server-side data fetching
+- Grid is responsive"
+TICKET-13,Product detail page,Phase 2: Frontend Pages,"1. Create app/product/[handle]/page.tsx
+2. Fetch the product using getProductByHandle(handle)
+3. Display: product images (gallery or single), title, description, price
+4. If variants exist (size, color) render a variant picker (client component)
+5. Add an ""Add to Cart"" button that calls addToCartAction with the selected variant ID and quantity
+6. Show a confirmation (toast, inline message, or redirect to cart) after adding","- /product/some-handle renders the correct product from Shopify
+- All product images are displayed
+- Variant options (e.g. size, color) are selectable and update the displayed price if variants differ
+- ""Add to Cart"" calls the server action and adds the item to the cart
+- User receives visual feedback that the item was added
+- 404 or ""not found"" is shown for invalid handles"
+TICKET-14,Cart page,Phase 2: Frontend Pages,"1. Create app/cart/page.tsx
+2. Read cartId from cookie; fetch the cart via getCart()
+3. Display line items: product image, title, variant info, unit price, quantity, line total
+4. Add quantity controls: increment, decrement, remove (calling updateCartLineAction / removeFromCartAction)
+5. Show cart subtotal and total
+6. Add a ""Checkout"" button (wired in TICKET-15; for now can be disabled or placeholder)
+7. Show an ""empty cart"" state when there are no items","- /cart displays all items currently in the cart
+- Each line shows image, title, variant, unit price, quantity, and line total
+- Changing quantity updates the line and totals
+- Removing an item removes it from the cart and re-renders
+- Cart subtotal and total are accurate
+- Empty state is shown when the cart has no items"
+TICKET-15,Checkout redirect,Phase 3: Checkout and Polish,"1. On the cart page wire the ""Checkout"" button to read the cart's checkoutUrl (returned by the Storefront API in the Cart object)
+2. On click redirect the user to that URL (full-page redirect to Shopify-hosted checkout)
+3. Optionally configure a post-checkout return URL in Shopify Admin > Settings > Checkout so the user comes back to your site","- Clicking ""Checkout"" redirects to a valid Shopify checkout page with the cart contents
+- The checkout page shows the correct items, quantities, and prices
+- After completing checkout (or using Shopify's test mode) the user can return to the storefront"
+TICKET-16,Loading and error states,Phase 3: Checkout and Polish,"1. Add app/products/loading.tsx with a skeleton grid placeholder
+2. Add app/product/[handle]/loading.tsx with a skeleton product detail placeholder
+3. Add app/cart/loading.tsx with a skeleton cart placeholder
+4. Add error.tsx files for products, product detail, and cart routes with user-friendly error messages and a ""Try again"" button
+5. Handle the case where getProductByHandle returns null by rendering notFound()","- A loading skeleton/spinner is shown while product and cart data loads
+- If the Storefront API is unreachable or returns an error a friendly error message is shown (not a raw stack trace)
+- Error pages include a retry/reload action
+- Invalid product handles show a 404 page"
+TICKET-17,GRBG branding pass,Phase 4: Branding and Launch,"1. Add the GRBG logo (SVG or image) to public/ and reference it in the header
+2. Define GRBG brand colors and typography in app/globals.css (CSS variables) and apply via Tailwind classes
+3. Update favicon (app/favicon.ico or app/icon.svg)
+4. Set Open Graph metadata (title, description, image) in layout.tsx or per-page metadata exports
+5. Visual review: walk through Home, Products, Product Detail, and Cart pages to ensure consistent branding","- GRBG logo is visible in the header on all pages
+- Brand colors and fonts are applied consistently across all pages
+- Favicon reflects the GRBG brand
+- OG metadata is set (visible when sharing a link on social media / link previews)
+- No default Next.js or placeholder branding remains"
+TICKET-18,Deploy to Vercel,Phase 4: Branding and Launch,"1. Push the repo to GitHub (if not already)
+2. Import the project in Vercel and connect the GitHub repo
+3. Add SHOPIFY_STORE_DOMAIN and SHOPIFY_STOREFRONT_ACCESS_TOKEN as environment variables in Vercel project settings
+4. Deploy and verify the production build
+5. (Optional) Configure a custom domain in Vercel and set it as the storefront domain in Shopify","- The site is live on a Vercel URL (e.g. grbg-store.vercel.app)
+- All pages load correctly in production (products, cart, checkout redirect)
+- Environment variables are set and not exposed to the client
+- Build succeeds with zero errors
+- (Optional) Custom domain resolves and serves the site with HTTPS"
+TICKET-19,End-to-end test order,Phase 4: Branding and Launch,"1. Enable Shopify Payments test mode (or use Bogus Gateway) in Shopify Admin
+2. Browse the live site, add a product to cart, proceed to checkout
+3. Complete checkout using test payment credentials
+4. Verify the order appears in Shopify Admin > Orders
+5. Verify the order is received in Printful dashboard and enters fulfillment
+6. Confirm shipping notifications flow back to Shopify","- A test order can be placed end-to-end from the storefront through Shopify checkout
+- The order appears in Shopify Admin with correct line items and totals
+- Printful receives the order and shows it as pending fulfillment
+- No errors or broken states during the full flow
+- (Cleanup) Cancel/refund the test order after verification"
