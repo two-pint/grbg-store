@@ -2,6 +2,9 @@ import Link from "next/link";
 import { getProducts } from "@/lib/shopify/products";
 import ProductCard from "@/components/ProductCard";
 
+// Re-fetch product data at most every 60 seconds
+export const revalidate = 60;
+
 export default async function Home() {
   const products = await getProducts(6);
 
