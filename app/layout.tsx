@@ -21,12 +21,25 @@ export const metadata: Metadata = {
   },
   description:
     "GRBG — bold, original designs on premium print-on-demand goods.",
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL ?? "https://grbg-store.vercel.app",
+  ),
   openGraph: {
     title: "GRBG",
     description:
       "GRBG — bold, original designs on premium print-on-demand goods.",
     siteName: "GRBG",
     type: "website",
+    locale: "en_US",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "GRBG",
+    description:
+      "GRBG — bold, original designs on premium print-on-demand goods.",
+  },
+  icons: {
+    icon: "/icon.svg",
   },
 };
 
@@ -38,7 +51,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} flex min-h-screen flex-col antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} flex min-h-screen flex-col font-sans antialiased`}
       >
         <Header />
         <main className="flex-1">{children}</main>

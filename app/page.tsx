@@ -14,7 +14,7 @@ export default async function Home() {
       <section className="flex flex-col items-center justify-center px-4 py-24 text-center sm:py-32">
         <h1 className="max-w-2xl text-4xl font-bold tracking-tight text-foreground sm:text-5xl lg:text-6xl">
           Bold designs.{" "}
-          <span className="text-indigo-500">Zero&nbsp;compromise.</span>
+          <span className="text-accent">Zero&nbsp;compromise.</span>
         </h1>
         <p className="mt-4 max-w-lg text-lg text-foreground/60">
           Original artwork on premium print-on-demand goods — made to order,
